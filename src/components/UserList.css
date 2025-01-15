@@ -1,0 +1,15 @@
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px;
+  font-size: 24px;
+}
+
+.user-item {
+  transition: color 0.3s ease;
+}
+
+.current-user {
+  font-weight: bold;
+} 

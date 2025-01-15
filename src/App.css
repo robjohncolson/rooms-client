@@ -1,0 +1,15 @@
+.app {
+  min-height: 100vh;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  cursor: pointer;
+}
+
+.color-picker-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+} 
