@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import ColorPicker from './components/ColorPicker';
 import UserList from './components/UserList';
+import QRCodeButton from './components/QRCodeButton';
 import './App.css';
 
 const socket = io(import.meta.env.VITE_SERVER_URL || 'http://localhost:3000');
@@ -70,6 +71,7 @@ function App() {
         users={users} 
         currentUser={currentUser}
       />
+      <QRCodeButton />
     </div>
   );
 }
