@@ -9,7 +9,8 @@ const socket = io(import.meta.env.VITE_SERVER_URL || 'http://localhost:3000', {
   transports: ['websocket', 'polling'],
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
-  autoConnect: false
+  autoConnect: false,
+  timeout: 10000
 });
 
 function App() {
@@ -19,7 +20,9 @@ function App() {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    socket.connect();
+    const connectSocket = () => {
+      socket.connect();
+    };
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -29,10 +32,13 @@ function App() {
     socket.on('disconnect', () => {
       console.log('Disconnected from server');
       setConnected(false);
+      // Try to reconnect after a short delay
+      setTimeout(connectSocket, 1000);
     });
 
     socket.on('connect_error', (error) => {
       console.error('Connection error:', error);
+      setConnected(false);
     });
 
     socket.on('init', ({ user, users }) => {
@@ -44,7 +50,12 @@ function App() {
 
     socket.on('user-joined', (user) => {
       console.log('User joined:', user);
-      setUsers(prev => [...prev, user]);
+      setUsers(prev => {
+        // Prevent duplicate users
+        const exists = prev.some(u => u.id === user.id);
+        if (exists) return prev;
+        return [...prev, user];
+      });
     });
 
     socket.on('user-left', (userId) => {
@@ -57,6 +68,10 @@ function App() {
       setUsers(prev => prev.map(user => 
         user.id === updatedUser.id ? updatedUser : user
       ));
+      // Update current user's color if it's us
+      if (currentUser && updatedUser.id === currentUser.id) {
+        setSelectedColor(updatedUser.color);
+      }
     });
 
     socket.on('user-flash', (userId) => {
@@ -78,22 +93,22 @@ function App() {
       }, 1000);
     });
 
+    connectSocket();
+
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [currentUser]);
 
   const handleColorChange = (color) => {
+    if (!connected || !currentUser) return;
     setSelectedColor(color);
-    if (connected) {
-      socket.emit('color-change', color);
-    }
+    socket.emit('color-change', color);
   };
 
   const handleUserTap = (userId) => {
-    if (connected) {
-      socket.emit('flash', userId);
-    }
+    if (!connected || !currentUser) return;
+    socket.emit('flash', userId);
   };
 
   return (
