@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import Ball from './components/Ball';
+import QRCodeButton from './components/QRCodeButton';
 import './App.css';
 
 const socket = io(import.meta.env.VITE_SERVER_URL || 'http://localhost:3000', {
@@ -14,6 +16,8 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [connected, setConnected] = useState(false);
+  const [scores, setScores] = useState(new Map());
+  const [gameComplete, setGameComplete] = useState(false);
 
   // Keep connection alive
   useEffect(() => {
@@ -68,13 +72,20 @@ function App() {
     socket.on('user-left', (userId) => {
       console.log('User left:', userId);
       setUsers(prev => prev.filter(user => user.id !== userId));
+      setScores(prev => {
+        const newScores = new Map(prev);
+        newScores.delete(userId);
+        return newScores;
+      });
     });
 
-    socket.on('user-updated', (updatedUser) => {
-      console.log('User updated:', updatedUser);
-      setUsers(prev => prev.map(user => 
-        user.id === updatedUser.id ? updatedUser : user
-      ));
+    socket.on('score-update', ({ userId, accuracy }) => {
+      setScores(prev => {
+        const newScores = new Map(prev);
+        const userScores = newScores.get(userId) || [];
+        newScores.set(userId, [...userScores, accuracy]);
+        return newScores;
+      });
     });
 
     connectSocket();
@@ -85,8 +96,59 @@ function App() {
     };
   }, []);
 
+  const handleTap = useCallback((accuracy, bounceNumber) => {
+    if (!currentUser || !connected) return;
+    
+    socket.emit('score-update', {
+      userId: currentUser.id,
+      accuracy
+    });
+
+    setScores(prev => {
+      const newScores = new Map(prev);
+      const userScores = newScores.get(currentUser.id) || [];
+      newScores.set(currentUser.id, [...userScores, accuracy]);
+      
+      // Check if game is complete for this user
+      if (userScores.length >= 2) {
+        setGameComplete(true);
+      }
+      
+      return newScores;
+    });
+  }, [currentUser, connected]);
+
+  const getWinner = useCallback(() => {
+    if (!gameComplete) return null;
+    
+    let bestScore = Infinity;
+    let winnerId = null;
+    
+    scores.forEach((userScores, userId) => {
+      if (userScores.length === 3) {
+        const avgScore = userScores.reduce((a, b) => a + b, 0) / userScores.length;
+        if (avgScore < bestScore) {
+          bestScore = avgScore;
+          winnerId = userId;
+        }
+      }
+    });
+    
+    return users.find(user => user.id === winnerId);
+  }, [scores, users, gameComplete]);
+
+  const winner = getWinner();
+
   return (
-    <div className="app" />
+    <div className="app">
+      <Ball onTap={handleTap} />
+      {gameComplete && winner && (
+        <div className="winner-announcement">
+          Winner: {winner.name}!
+        </div>
+      )}
+      <QRCodeButton />
+    </div>
   );
 }
 

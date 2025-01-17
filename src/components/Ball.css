@@ -1,0 +1,33 @@
+.ball-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.ball {
+  width: 40px;
+  height: 40px;
+  background-color: red;
+  border-radius: 50%;
+  position: absolute;
+  top: -40px;
+}
+
+.ball.animate {
+  animation: bounce 4s cubic-bezier(0.36, 0, 0.66, 1) forwards;
+}
+
+@keyframes bounce {
+  0% { transform: translateY(0); }
+  23% { transform: translateY(calc(100vh - 40px)); } /* First bounce */
+  25% { transform: translateY(calc(100vh - 40px)); }
+  48% { transform: translateY(calc(100vh - 40px)); } /* Second bounce */
+  50% { transform: translateY(calc(100vh - 40px)); }
+  73% { transform: translateY(calc(100vh - 40px)); } /* Third bounce */
+  75% { transform: translateY(calc(100vh - 40px)); }
+  100% { transform: translateY(-100vh); } /* Exit screen */
+} 
