@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import ColorPicker from './components/ColorPicker';
 import UserList from './components/UserList';
@@ -7,10 +7,10 @@ import './App.css';
 
 const socket = io(import.meta.env.VITE_SERVER_URL || 'http://localhost:3000', {
   transports: ['websocket', 'polling'],
-  reconnectionAttempts: 5,
+  reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
-  autoConnect: false,
-  timeout: 10000
+  timeout: 60000,
+  autoConnect: false
 });
 
 function App() {
@@ -19,9 +19,22 @@ function App() {
   const [selectedColor, setSelectedColor] = useState({ c: 50, m: 50, y: 50, k: 0 });
   const [connected, setConnected] = useState(false);
 
+  // Keep connection alive
+  useEffect(() => {
+    const pingInterval = setInterval(() => {
+      if (connected) {
+        socket.emit('ping');
+      }
+    }, 20000);
+
+    return () => clearInterval(pingInterval);
+  }, [connected]);
+
   useEffect(() => {
     const connectSocket = () => {
-      socket.connect();
+      if (!socket.connected) {
+        socket.connect();
+      }
     };
 
     socket.on('connect', () => {
@@ -32,13 +45,13 @@ function App() {
     socket.on('disconnect', () => {
       console.log('Disconnected from server');
       setConnected(false);
-      // Try to reconnect after a short delay
       setTimeout(connectSocket, 1000);
     });
 
     socket.on('connect_error', (error) => {
       console.error('Connection error:', error);
       setConnected(false);
+      setTimeout(connectSocket, 1000);
     });
 
     socket.on('init', ({ user, users }) => {
@@ -68,7 +81,6 @@ function App() {
       setUsers(prev => prev.map(user => 
         user.id === updatedUser.id ? updatedUser : user
       ));
-      // Update current user's color if it's us
       if (currentUser && updatedUser.id === currentUser.id) {
         setSelectedColor(updatedUser.color);
       }
@@ -96,20 +108,21 @@ function App() {
     connectSocket();
 
     return () => {
+      clearInterval(pingInterval);
       socket.disconnect();
     };
-  }, [currentUser]);
+  }, []);
 
-  const handleColorChange = (color) => {
+  const handleColorChange = useCallback((color) => {
     if (!connected || !currentUser) return;
     setSelectedColor(color);
     socket.emit('color-change', color);
-  };
+  }, [connected, currentUser]);
 
-  const handleUserTap = (userId) => {
+  const handleUserTap = useCallback((userId) => {
     if (!connected || !currentUser) return;
     socket.emit('flash', userId);
-  };
+  }, [connected, currentUser]);
 
   return (
     <div className="app">
