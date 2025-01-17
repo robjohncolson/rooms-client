@@ -16,6 +16,7 @@ function App() {
     socket.on('init', ({ user, users }) => {
       setCurrentUser(user);
       setUsers(users);
+      setSelectedColor(user.color);
     });
 
     socket.on('user-joined', (user) => {
@@ -58,18 +59,19 @@ function App() {
     socket.emit('color-change', color);
   };
 
-  const handleScreenClick = () => {
-    socket.emit('flash', currentUser?.id);
+  const handleUserTap = (userId) => {
+    socket.emit('flash', userId);
   };
 
   return (
-    <div className="app" onClick={handleScreenClick}>
+    <div className="app">
       <div className="color-picker-container">
         <ColorPicker value={selectedColor} onChange={handleColorChange} />
       </div>
       <UserList 
         users={users} 
         currentUser={currentUser}
+        onUserTap={handleUserTap}
       />
       <QRCodeButton />
     </div>
